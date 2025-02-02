@@ -27,7 +27,7 @@ def get_data(days,tickers):
     for company in tickers.keys():
         tkr = yf.Ticker(tickers[company])
         hist = tkr.history(period=f'{days}d')
-        hist.index = hist.index.strftime('%d %8 %Y')
+        hist.index = pd.to_datetime(hist.index)  # 日付をdatetime型に変換
         hist = hist[['Close']]
         hist.columns = [company]
         hist = hist.T
@@ -38,42 +38,41 @@ def get_data(days,tickers):
 st.sidebar.write("""
 ## 株価の範囲指定
 """)
-ymin,ymax = st.sidebar.slider(
+ymin, ymax = st.sidebar.slider(
     '範囲を指定してください',
-    0.0,700.0,(0.0,700.0)
+    0.0, 700.0, (0.0, 700.0)
 )
 
 tickers = {
-    'aaple':'AAPL',
-    'meta':'META',
-    'google':'GOOGL',
-    'microsoft':'MSFT',
-    'amazon':'AMZN',
-    'nvidia':'NVDA',
+    'aaple': 'AAPL',
+    'meta': 'META',
+    'google': 'GOOGL',
+    'microsoft': 'MSFT',
+    'amazon': 'AMZN',
+    'nvidia': 'NVDA',
 }
-df = get_data(days,tickers)
+df = get_data(days, tickers)
 
 companys = st.multiselect(
     '会社名を選択してください',
     list(df.index),
-    ['aaple','amazon','google','microsoft','meta','nvidia']
+    ['aaple', 'amazon', 'google', 'microsoft', 'meta', 'nvidia']
 )
 
 if not companys:
     st.error('１社は選択ください')
 else:
     data = df.loc[companys]
-    st.write("### (USD)",data.sort_index())
-    data = data.T.reset_index()
-    data = pd.melt(data, id_vars=['Date']).rename(
-        columns={'value':'Stock Prices(USD)'})
+    st.write("### (USD)", data.sort_index())
+    data = data.T.reset_index().rename(columns={"index": "Date"})  # reset_index後、Date列を名前変更
+    data = pd.melt(data, id_vars=['Date']).rename(columns={'value': 'Stock Prices(USD)'})
     chart = (
         alt.Chart(data)
         .mark_line(opacity=0.8, clip=True)
         .encode(
             x='Date:T',
-            y=alt.Y('Stock Prices(USD):Q', stack=None, scale=alt.Scale(domain=[ymin, ymax]) ),
-            color = 'Name:N'
+            y=alt.Y('Stock Prices(USD):Q', stack=None, scale=alt.Scale(domain=[ymin, ymax])),
+            color='Name:N'
         )
     )
-    st.altair_chart(chart,use_container_width=True)
+    st.altair_chart(chart, use_container_width=True)
